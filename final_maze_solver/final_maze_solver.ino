@@ -37,12 +37,10 @@ int pathlength; //variable to record the total of path length
 int readpath; //variable to call the path record
 char path[99]; //array for path record
 
-
-int s[5];
-int run_tracker=0;
-int sum=0;
 int L1=4, L2=5, enL=11, R1=2, R2=3, enR=10;
-int threshold = 350;
+int s[5];
+
+int threshold = 400;
 
 
 
