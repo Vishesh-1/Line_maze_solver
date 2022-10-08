@@ -2,12 +2,12 @@
 
 
 Components used:
-	1. Two 1000 RPM motor
+	1. Two 150 RPM motor
             2. Five I.R sensors
 	3. Arduino UNO
 	4. L298N motor driver
 	5. Jumper wires
-	6. Metal chassis and two tires
+	6. fiber chassis and two tires
 	7. Caster wheel
 	8. Three 3.7V  batteries connected in series
 
