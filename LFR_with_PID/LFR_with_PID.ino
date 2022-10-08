@@ -1,4 +1,4 @@
-define CenterSensor A2
+#define CenterSensor A2
 #define leftNearSensor A3
 #define leftFarSensor A4
 #define rightNearSensor A1
@@ -107,7 +107,7 @@ data=(s[0]*16)+(s[1]*8)+(s[2]*4)+(s[3]*2)+(s[4]*1);
 void calculate_pid()
 {
  P = error;
- I = I + previous_I;
+ I = previous_I + error;
  D = error-previous_error;
  
  PID_value = (Kp*P) + (Ki*I) + (Kd*D);
@@ -133,8 +133,7 @@ void condition()
 {
  read_sensor();
  Serial.print(error);
- if (data==0b0011100 || data == 0b0011110) { // Make left turn untill it detects straight 
-path
+ if (data==0b0011100 || data == 0b0011110) { // Make left turn untill it detects straight path
  //Serial.print("\t");
  //Serial.println("Left");
  do {
@@ -145,8 +144,7 @@ path
  path[pathlength]='L';
  pathlength++;
  
- } else if (data==0b0000111 || data==0b0001111) { // Make right turn in case of it detects 
-only right path (it will go into forward direction in case of staright and right "|--")
+ } else if (data==0b0000111 || data==0b0001111) { // Make right turn in case of it detects only right path (it will go into forward direction in case of staright and right "|--")
  // untill it detects straight path.
  //Serial.print("\t");
  //Serial.println("Right");
@@ -187,8 +185,7 @@ only right path (it will go into forward direction in case of staright and right
  delay(200);
  }
  } while (error != 0);
- } else if (data==0b0011111) { // Make left turn untill it detects straight path or stop if dead 
-end reached.
+ } else if (data==0b0011111) { // Make left turn untill it detects straight path or stop if dead end reached.
  if (flag == 0) {
  
  moveforward();
