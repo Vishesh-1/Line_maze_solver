@@ -8,7 +8,7 @@ int mata1;
 int mata2; 
 int mata3; 
 int mata4;
-float Kp=45,Ki=0.6,Kd=40;
+float Kp=1,Ki=0,Kd=0;
 float error=0, P=0, I=0, D=0, PID_value=0;
 float previous_error=0, previous_I=0;
 int initial_motor_speed=130;
@@ -20,7 +20,7 @@ int data;
 int pathlength; //variable to record the total of path length
 int readpath; //variable to call the path record
 char path[99]; //array for path record
-int L1=4, L2=5, enL=11, R1=2, R2=3, enR=10;
+int L1=2, L2=3, enL=11, R1=4, R2=5, enR=10;
 int s[5];
 int threshold = 400;
 void setup() {
@@ -225,13 +225,13 @@ void condition()
 }
 void MOTOR(int left_speed, int right_speed){
  if(left_speed >= 0){
- digitalWrite(L1, HIGH);
- digitalWrite(L2, LOW);
+ digitalWrite(L1, LOW);
+ digitalWrite(L2, HIGH);
  analogWrite(enL, left_speed);
  }
  else{
- digitalWrite(L1, LOW);
- digitalWrite(L2, HIGH);
+ digitalWrite(L1, HIGH);
+ digitalWrite(L2, LOW);
  analogWrite(enL,abs(left_speed));
  }
  if(right_speed >= 0){
@@ -334,8 +334,8 @@ void choosepath()//to get rid of the effect of “path[]==0” in the record
 void moveforward()
 {
  analogWrite(enL, 130);
- digitalWrite(L1, HIGH);
- digitalWrite(L2, LOW);
+ digitalWrite(L1, LOW);
+ digitalWrite(L2, HIGH);
  analogWrite(enR, 130); 
  digitalWrite(R1, LOW);
  digitalWrite(R2, HIGH);
@@ -343,8 +343,8 @@ void moveforward()
 void turnright()
 {
  analogWrite(enL, 130);
- digitalWrite(L1, HIGH);
- digitalWrite(L2, LOW);
+ digitalWrite(L1, LOW);
+ digitalWrite(L2, HIGH);
  analogWrite(enR, 130);
  digitalWrite(R1, HIGH);
  digitalWrite(R2, LOW);
@@ -352,8 +352,8 @@ void turnright()
 void turnleft()
 {
  analogWrite(enL, 130);
- digitalWrite(L1, LOW);
- digitalWrite(L2, HIGH);
+ digitalWrite(L1, HIGH);
+ digitalWrite(L2, LOW);
  analogWrite(enR, 130);
  digitalWrite(R1, LOW);
  digitalWrite(R2, HIGH);
