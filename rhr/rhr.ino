@@ -1,8 +1,14 @@
-int sensor0 = A4; //leftmost sensor, pin A4
-int sensor1 = A3;
-int sensor2 = A2;
-int sensor3 = A1;
-int sensor4 = A0;// rightmost sensor, pin A0
+#include <MCP3008.h>
+
+
+// define pin connections
+#define CS_PIN 12
+#define CLOCK_PIN 9
+#define MOSI_PIN 11
+#define MISO_PIN 10
+
+// put pins inside MCP3008 constructor
+MCP3008 adc(CLOCK_PIN, MOSI_PIN, MISO_PIN, CS_PIN);
 
 int mata0; // mata means “eye”
 int mata1; 
@@ -12,515 +18,470 @@ int mata4;
 
 
 
-int R1 = 4; //forward or reverse, pin 4
-int R2 = 5;
-int onR = 10; //magnitude of the power for the motor
-int onL = 11; //magnitude of the power for the motor
-int L1 = 2; //forward or reverse, pin 7
-int L2 = 3;
-int data;
-unsigned char s[5]; //array for sensors
+//*** Variables ***:
+int ir[5];
+int run_tracker = 0;       // determines if Dry Run or Actual Run
+char node, turn;
+char memory[50];          // For saving the maze path
+int index1 = 0, index2 = 0;            // For indexing the memory array
+float left_base_speed=180, right_base_speed=180, left_speed, right_speed;
+float error, previous_error, total_error;         // LINE_TRACK() variables
+int sum;
+int L1=3, L2=2, L3=11, R1=5, R2=4, R3=10;                                       // Motor Pins
+float kp=1.4, kd=3.35;                                                               // Value of kp and kd
+int threshold = 350;
 
-int pathlength; //variable to record the total of path length
-int readpath; //variable to call the path record
-char path[99]; //array for path record
-
-int threshold = 990; //threshold between black/white
-
-//led to show what the robot is recording (L/R/S/U)
-//int BLUEled = 13;
-//int GREENled = 12;
-//int YELLOWled = 11;
-
-void strongright()
-{
-  analogWrite(onL, 127);
-  digitalWrite(L1, LOW);
-  digitalWrite(L2, HIGH);
-  analogWrite(onR, 53);//44
-  digitalWrite(R1, HIGH);//to keep the robot on the line
-  digitalWrite(R2, LOW);
-}
-
-void midright2()
-{
-  analogWrite(onL, 127);
-  digitalWrite(L1, LOW);
-  digitalWrite(L2, HIGH);
-  analogWrite(onR, 53);
-  digitalWrite(R1, LOW);//to keep the robot on the line
-  digitalWrite(R2, HIGH);
-  
-}
-
-void midright()
-{
-  analogWrite(onL, 127);
-  digitalWrite(L1, LOW);
-  digitalWrite(L2, HIGH);
-  analogWrite(onR, 63); // 48
-  digitalWrite(R1, LOW);
-  digitalWrite(R2, HIGH);
-}
-
-void softright()
-{
-  analogWrite(onL, 127);
-  digitalWrite(L1, LOW);
-  digitalWrite(L2, HIGH);
-  analogWrite(onR, 112);// 88
-  digitalWrite(R1, LOW);
-  digitalWrite(R2, HIGH);
-}
-
-void moveforward()
-{
-  analogWrite(onL, 110);
-  digitalWrite(L1, LOW);
-  digitalWrite(L2, HIGH);
-  analogWrite(onR, 110);
-  digitalWrite(R1, LOW);
-  digitalWrite(R2, HIGH);
-}
-
-void softleft()
-{
-  analogWrite(onL, 112);
-  digitalWrite(L1, LOW);
-  digitalWrite(L2, HIGH);
-  analogWrite(onR, 127);
-  digitalWrite(R1, LOW);
-  digitalWrite(R2, HIGH);
-}
-
-void midleft()
-{
-  analogWrite(onL, 63);
-  digitalWrite(L1, LOW);
-  digitalWrite(L2, HIGH);
-  analogWrite(onR, 127);
-  digitalWrite(R1, LOW);
-  digitalWrite(R2, HIGH);
-}
-
-void midleft2()
-{
- analogWrite(onL, 53);
-  digitalWrite(L1, LOW);
-  digitalWrite(L2, HIGH);
-  analogWrite(onR, 127);
-  digitalWrite(R1, LOW);
-  digitalWrite(R2, HIGH);
-}
-
-void strongleft()
-{
-  analogWrite(onL, 53);
-  digitalWrite(L1, HIGH);
-  digitalWrite(L2, LOW);
-  analogWrite(onR, 127);
-  digitalWrite(R1, LOW);
-  digitalWrite(R2, HIGH);
-}
-
-void turnright()
-{
-  analogWrite(onL, 110);
-  digitalWrite(L1, LOW);
-  digitalWrite(L2, HIGH);
-  analogWrite(onR, 110);
-  digitalWrite(R1, HIGH);
-  digitalWrite(R2, LOW);
-}
-
-void turnleft()
-{
-  analogWrite(onL, 110);
-  digitalWrite(L1, HIGH);
-  digitalWrite(L2, LOW);
-  analogWrite(onR, 110);
-  digitalWrite(R1, LOW);
-  digitalWrite(R2, HIGH);
-}
-
-void righttillstraight()
-{
-  turnright();
-  delay(200); //to be free from the line if there is a straight intersection (exit 2)
-  readsensor();
-  while (s[2]==0)
-  {
-    turnright();
-    readsensor();
-  }
-}
-
-void lefttillstraight()
-{
-  turnleft();
-  delay(200); //to be free from the line if there is a straight intersection (exit 2)
-  readsensor();
-  while (s[2]==0)
-  {
-    turnleft();
-    readsensor();
-  }
-}
-
-void turnaround()
-{
-  righttillstraight();
-}
-
-void stop()
-{  
-  analogWrite(onL, 0);
-  digitalWrite(L1, LOW);
-  digitalWrite(L2, LOW);
-  analogWrite(onR, 0);
-  digitalWrite(R1, LOW);
-  digitalWrite(R2, LOW);
-}
-
-void lilmoveforward()
-{
-  moveforward();
-  delay(100); // adjust based on your batteries power, new one would be stronger than the drained-out one, of course
-  readsensor();
-}
-
-void readsensor()
-{
-  //if declared outside, the sensor readings become “11111”
-  mata0 = analogRead(sensor0);
-  mata1 = analogRead(sensor1); 
-  mata2 = analogRead(sensor2); 
-  mata3 = analogRead(sensor3); 
-  mata4 = analogRead(sensor4); 
-
-//converting to digital
-if (mata0 < threshold)
-  {s[0] = 1;}
-else
-  {s[0] = 0;}
-
-if (mata1 < threshold)
-  {s[1] = 1;}
-else
-  {s[1] = 0;}
-
-if (mata2 < threshold)
-  {s[2] = 1;}
-else
-  {s[2] = 0;}
-
-if (mata3 < threshold)
-  {s[3] = 1;}
-else
-  {s[3] = 0;}
-
-if (mata4 < threshold)
-  {s[4] = 1;}
-else
-  {s[4] = 0;}
-
-//change the sensor readings into a series of binary number
-data=(s[0]*16)+(s[1]*8)+(s[2]*4)+(s[3]*2)+(s[4]*1);
-
-//to display the sensor readings on serial monitor
-Serial.print(s[0]);
-Serial.print("   ");
-Serial.print(s[1]);
-Serial.print("   ");
-Serial.print(s[2]);
-Serial.print("   ");
-Serial.print(s[3]);
-Serial.print("   ");
-Serial.print(s[4]);
-Serial.println(" ");
-}
-
-//Intersection condition -------------- 0b00abcde
-void condition()
-{
- if (data==0b0000100)
-   {
-   moveforward();
-   }
- else if (data==0b0000001)
-   {
-    strongright();
-    readsensor();
-    while (s[3]==0)
-    {
-      strongright();
-      readsensor();
-    }
-   }  
- else if (data==0b0000011)
-   {midright2();}  
- else if (data==0b0000010)
-   {midright();}
- else if (data==0b0000110)
-   {softright();}
- else if (data==0b0001100)
-   {softleft();}
- else if (data==0b0001000)
-   {midleft();}
- else if (data==0b0011000)
-   {midleft2();}
- else if (data==0b0010000)
-   {
-    strongleft();
-    readsensor();
-    while (s[1]==0)
-    {
-     strongleft();
-     readsensor();
-    }
-   }
- else //there is a right angle turn or intersection
-   {
-     if (data==0b0000000) //dead end
-        {
-          turnaround();
-          path[pathlength]='U';pathlength++;//save U
-          
-        }
-     
-     else if (data==0b0011111) //T, +, end of maze
-        {
-          lilmoveforward();
-          if (data==0b0000000)// T intersection
-            {
-              
-              lefttillstraight();
-              path[pathlength]='L';pathlength++;//save L
-              
-            }
-            
-          else if (data==0b0011111)//end of maze
-            {
-              stop(); //stopping the robot
-              path[pathlength]='F';
-              pathlength++;//save F
-              
-              //sign for the end of maze
-              
-              
-              shortpath(); //calculate the shortest path
-              
-              
-              //sign to prepare the robot (put it back) on the starting position
-             
-              shortestpath(); //move through the shortest path
-            }
-        
-          else //ada garis ke arah lurus 00100 dll (+ intersection)
-            {
-              lefttillstraight();
-              //turnleft();
-              path[pathlength]='L';pathlength++;//save L
-              
-            }
-        }
-   
-  //straight or right junction
-      else if ((data==0b0000111)||(data==0b0001111))
-        {
-          lilmoveforward();lilmoveforward();
-          if (data==0b0000000)//right only
-            {
-              righttillstraight();
-            }
-    else if (s[2]==1)
-                  {
-              
-              moveforward();
-              path[pathlength]='S';pathlength++;//save S
-              
-            }
-        }
-//left or straight junction
-      else if ((data==0b0011100)||(data==0b0011110))
-        {
-        
-          
-              
-              lefttillstraight();
-            
-        
-            
-              
-              path[pathlength]='L';pathlength++;//save L
-              
-            }
-         }
-    }
+//*** Functions ***:
+void DRY_RUN();                                      // Main Function - 01
+void Actual_RUN();                                   // Main Function - 02
+void SENSOR_READ();                                  // 1
+void LINE_TRACK();                                   // 2
+char NODE_CHECK();                                   // 3
+void TURN(char node, char turn);                     // 4
+void MOTOR(int left_speed, int right_speed);         // 5
+void CALCULATE_THE_SHORTEST_PATH();                  // 6
+void SENSOR_PRINT();
 
 
-void shortpath() //calculate the shortest path
-{
-  //because (..F) is the last and there is no U recorderd before F 
-  int x = (pathlength-2);
-
-  while (x > 0)  
-  {
-    if (path[x]=='U')
-      {
-        if (path[x-1]=='L' && path[x+1]=='L')
-          {path[x-1]='S';path[x]='O';path[x+1]='O';}
-        else if (path[x-1]=='L' && path[x+1]=='S')
-          {path[x-1]='R';path[x]='O';path[x+1]='O';}
-        else if (path[x-1]=='R' && path[x+1]=='R')
-          {path[x-1]='S';path[x]='O';path[x+1]='O';}
-        else if (path[x-1]=='R' && path[x+1]=='S')
-          {path[x-1]='L';path[x]='O';path[x+1]='O';}
-        else if (path[x-1]=='S' && path[x+1]=='L')
-          {path[x-1]='R';path[x]='O';path[x+1]='O';}
-        else if (path[x-1]=='S' && path[x+1]=='R')
-          {path[x-1]='L';path[x]='O';path[x+1]='O';}
-        else if (path[x-1]=='L' && path[x+1]=='R')
-          {
-            path[x-1]='U';path[x]='O';path[x+1]='O';
-            
-          }
-        else if (path[x-1]=='R' && path[x+1]=='L')
-          {
-            path[x-1]='U';path[x]='O';path[x+1]='O';
-            
-          }
-        else if (path[x-1]=='S' && path[x+1]=='S')
-          {
-            path[x-1]='U';path[x]='O';path[x+1]='O';
-            
-          }
-        //---------------------------------------
-        x--;
-      }
-    else
-      {x--;}
-  }
-}
-
-void shortestpath()
-{
- readsensor();
- if (data==0b0000100)
-   {moveforward();}
- else if (data==0b0000001)
-   {
-    strongright();
-    readsensor();
-    while (s[3]==0)
-    {
-      strongright();
-      readsensor();
-    }
-   }
- else if (data==0b0000011)
-   {midright2();}  
- else if (data==0b0000010)
-   {midright();}
- else if (data==0b0000110)
-   {softright();}
- else if (data==0b0001100)
-   {softleft();}
- else if (data==0b0001000)
-   {midleft();}
- else if (data==0b0011000)
-   {midleft2();}
- else if (data==0b0010000)
-   {
-    strongleft();
-    readsensor();
-    while (s[1]==0)
-    {
-     strongleft();
-     readsensor();
-    }
-   }
- else
-     //right or straight
-     if ((data==0b0000111)||(data==0b0001111))
-      {
-        lilmoveforward();
-        if (data==0b0000000)//right only
-          {
-            righttillstraight();
-          }
-        else //there is a straight path
-          {
-            choosepath();
-          }
-      }
-    //left or straight
-    else if ((data==0b0011100)||(data==0b0011110))
-      {
-        
-            choosepath();
-          
-      }
-    //T, +, or END OF MAZE
-    else if  (data==0b0011111)
-      {
-        choosepath();
-      }
-  shortestpath();
-}  
-
-void choosepath()//to get rid of the effect of “path[]==0” in the record
-{
-  if (path[readpath]=='F')
-    { 
-      stop();
-      //finish();
-    }
-  else if (path[readpath]=='R')
-    {
-     
-      righttillstraight();
-    }
-  else if (path[readpath]=='S')
-    {
-      
-      moveforward();delay(200);
-    }
-  else if (path[readpath]=='L')
-    {
-     
-      lefttillstraight();
-    }
-  else if (path[readpath]=='O')
-    {
-      readpath++;
-      choosepath();
-    } 
-  readpath++;
-  shortestpath();
-}
-
-/*void finish()
-{
- 
-  finish();
-}
-*/
-void setup()
-{
+void setup() {
+  // put your setup code here, to run once:
+  pinMode(2,OUTPUT);
+  digitalWrite(13, HIGH);
+  delay(1000);
+  digitalWrite(13, LOW);
+  delay(500);
+  digitalWrite(13, HIGH);
+  delay(1000);
+  digitalWrite(13, LOW);
   Serial.begin(9600);
-  pinMode(R1, OUTPUT);
-  pinMode(R2, OUTPUT);
-  pinMode(L1, OUTPUT);
-  pinMode(L2, OUTPUT);
-  pinMode(onR, OUTPUT);
-  pinMode(onL, OUTPUT);
-
-  analogReference(INTERNAL);
+//  digitalWrite(2,HIGH);
+//  delay(500);
+//  digitalWrite(2,LOW);
+//  delay(500);
 }
 
-void loop()
+void loop() {
+
+  SENSOR_READ();
+//  LINE_TRACK();
+//    MOTOR(100, -100);
+//  DRY_RUN();
+//    SENSOR_READ();
+//    delay(100);
+//    SENSOR_PRINT();
+//    NODE_CHECK();
+//MOTOR(150, 150);
+}
+
+
+void DRY_RUN(){                                          // Main Function - 01
+  
+  while(run_tracker == 0)
+  {
+  SENSOR_READ();                                             // white line on black surface ---> black e 0 and white e 1
+  if((!ir[0] && !ir[4]) && (ir[2]))                                       // pichoner duitai line er baire thakle
+  {
+    SENSOR_READ();                                          // 1 on white(line).. karon white e < threshold and 0 on black(surface)
+    
+    while((!ir[0] && !ir[4]) && (ir[2]))                                  // jotokkhon pichoner duitai line er baire thakbe
+    {
+      LINE_TRACK();
+      SENSOR_READ();                                         // 1 on white.. karon white e < threshold
+    }
+  }
+  else                                                       // pichoner jkono ekta line paile
+  {
+    MOTOR(100, 100);
+    delay(2);
+    MOTOR(-100, -100);
+    delay(1);
+    MOTOR(0, 0);
+    delay(2);
+    
+    node = NODE_CHECK(); //l, r, L, R, T, P, d, b, Y, U
+//    MOTOR(0,0);
+//    delay(100);
+    
+    if(node == 'T' || node == 'P'){
+      turn = 'L';
+    }
+    else if(node == 'R'){
+      turn = 'S';
+    }
+    else if(node == 'E'){                                     //***************** Reaches the White Block and Ends the dry run !! *********************
+      run_tracker++;                                          // Sets the value of run_tracker to 1
+      digitalWrite(13, HIGH);
+      MOTOR(0, 0);
+      CALCULATE_THE_SHORTEST_PATH();
+      delay(5000);
+      for(int i=0; memory[i]; i++){
+        Serial.print(memory[i]);
+      }
+      
+      delay(5000);
+      return;                                                 // Terminates the DRY_RUN Function
+    }
+    else{
+      turn = node;
+    }
+    if(!(node == 'l' || node == 'r')){
+      memory[index1++] = turn;
+    }
+    
+    TURN(node, turn);
+  }
+  }
+}
+
+void ACTUAL_RUN(){                                         //---------   Main Function - 02  ---------------------
+  SENSOR_READ();                                             // white line on black surface ---> black e 0 and white e 1
+  digitalWrite(13, LOW);
+  if(!ir[0] && !ir[4])                                       // pichoner duitai line er baire thakle
+  {
+    SENSOR_READ();                                          // 1 on white(line).. karon white e < threshold and 0 on black(surface)
+    
+    while(!ir[0] && !ir[4])                                  // jotokkhon pichoner duitai line er baire thakbe
+    {
+      LINE_TRACK();
+      SENSOR_READ();                                         // 1 on white.. karon white e < threshold
+    }
+  }
+  else{
+    node = NODE_CHECK();
+    if(node == 'E'){                                         //********** Completes the actual run **************
+      digitalWrite(13, HIGH);
+      MOTOR(0, 0);
+      for(int i=0; i<24; i++){
+        delay(5000);
+      }
+    }
+    if(node == 'l' || node == 'r'){
+      TURN(node, node);
+    }
+    else{
+      turn = memory[index2++];
+      TURN(node, turn);
+    }
+  } 
+}
+
+void SENSOR_READ() // white line on black surface
 {
- readsensor();
- condition();
+  Serial.println("ok");
+   mata0 = analogRead(ir[0])<threshold;
+  mata1 = analogRead(ir[1])<threshold; 
+  mata2 = analogRead(ir[2])<threshold; 
+  mata3 = analogRead(ir[3])<threshold; 
+  mata4 = analogRead(ir[4])<threshold; 
+
+
+  //
+Serial.println("ok");
+  /*for(int i=1; i<5; i++)
+  {
+    ir[i-1] = adc.readADC(i)<threshold;
+      Serial.print(adc.readADC(i));
+      Serial.print(" ");
+  }*/
+  
+void SENSOR_PRINT()
+{
+  for(int i=0; i<5; i++)
+  {
+    Serial.print(ir[i]);
+//    Serial.print('\t');
+  }
+  Serial.println(' ');
+}
+
+void LINE_TRACK(){
+  sum = ir[1] + ir[2] + ir[3] ];
+  if(sum > 1){
+    return;
+  }
+  error = (ir[1] * -45 + ir[2] * -35 + ir[3] * 0 + ir[4] * 35 + ir[5] *45 );
+  total_error = kp * error + kd * (error - previous_error);
+//  Serial.println(total_error);
+  left_speed = left_base_speed + total_error;
+  right_speed = right_base_speed - total_error;
+
+  if(left_speed > 255){
+    left_speed = 255;
+  }
+  if (right_speed > 255){
+    right_speed = 255;
+  }
+
+  MOTOR(left_speed, right_speed);
+//  Serial.print(left_speed);
+//  Serial.print("\t");
+//  Serial.println(right_speed);
+  previous_error = error;
+}
+
+char NODE_CHECK(){                          //l, r, L, R, T, P, d, b, Y, U
+  char ch;
+  if(ir[0] && !ir[4]){                                                                      // l or L
+    if(ir[2] && !ir[3]){
+      ch = 'L';
+    }
+    else{
+      if(ir[3]){
+        ch = 'T';
+      }
+      else{
+        ch = 'l';
+      }
+    }
+  }
+  else if(!ir[0] && ir[4]){                                                                // r or R
+    if(ir[2] && !ir[1]){
+      ch = 'R';
+    }
+    else{
+      if(ir[1]){
+        ch = 'T';
+      }
+      else{
+        ch = 'r';
+      }
+    }
+  }
+  else if(ir[0] && ir[4]){                                                                 // T or P or End Full White block (E)nd
+//    if(ir[3] || ir[4] || ir[5]){
+//      ch = 'P';
+//    }
+     if(!ir[2] && !ir[3]){                                   // ir[6] baad
+      ch = 'T';
+    }
+    //***************** Special_Case(White_Block) *************************
+    else if(ir[1] && ir[2] && ir[3] && ir[4] && ir[5] && ir[6] && ir[7]){                  // White Block
+      ch = 'E';
+    }
+  }
+//  Serial.print("YES");
+    if(!(ir[0] || ir[1] || ir[2] || ir[3] || ir[4] || ir[5] || ir[6] || ir[7] || ir[8])){
+    ch = 'U';
+  }
+  Serial.println(ch);
+  SENSOR_READ();
+  SENSOR_PRINT();
+  MOTOR(0, 0);
+  delay(20);
+  MOTOR(-left_speed,-right_speed);
+  delay(15);
+  MOTOR(0, 0);
+  delay(100);
+  return ch;
+}
+
+
+void TURN(char node, char turn)                                    // node = l, r, L, R, P, T, E     &&     turn = l, r, L, R, S
+{
+  SENSOR_READ();
+  // left ----------------------------------------------------------------------------------------------------- case - 01
+  if(node == 'l'){
+    while(!ir[4]){
+      MOTOR(-100, 100);
+      SENSOR_READ();
+    }
+    MOTOR(100, -100);
+    delay(2);
+    MOTOR(0, 0);
+    delay(2);
+//    MOTOR(100, -100);          // reverse torque
+//    MOTOR(0, 0);
+    MOTOR(100,100);
+    delay(100);
+    LINE_TRACK();
+  }
+
+  // right ---------------------------------------------------------------------------------------------------- case - 02
+  if(node == 'r'){
+    SENSOR_READ();
+    while(!ir[4]){
+      MOTOR(100, -100);
+      SENSOR_READ();
+    }
+//    MOTOR(-100, right_base_speed);           // reverse torque
+//    MOTOR(0, 0);
+    MOTOR(-100, 100);
+    delay(2);
+    MOTOR(0, 0);
+    MOTOR(100, 100);
+    delay(100);
+    LINE_TRACK();
+  }
+
+  // Left_T__left --------------------------------------------------------------------------------------------- case - 03
+  if(node == 'L' && turn == 'L'){
+    SENSOR_READ();
+    while(ir[4]){
+      MOTOR(-100, 100);
+      SENSOR_READ();
+    }
+    while(!ir[4]){
+      MOTOR(-100, 100);
+      SENSOR_READ();
+    }
+//    MOTOR(0, 0);
+    MOTOR(100, -100);
+    delay(2);
+    MOTOR(0, 0);
+//    delay(2);
+    MOTOR(100, 100);
+    delay(300);
+//    Serial.println("Yes");
+    LINE_TRACK();
+  }
+  
+
+  // Left_T__straight------------------------------------------------------------------------------------------ case - 04
+  if(node == 'L' && turn == 'S'){
+    SENSOR_READ();
+    while(ir[0]){
+      MOTOR(100, 100);
+      SENSOR_READ();
+    }
+    MOTOR(100, 100);
+    delay(100);
+    LINE_TRACK();
+    
+  }
+
+  // Right_T__right ------------------------------------------------------------------------------------------- case - 05
+  if(node == 'R' && turn == 'R'){
+    SENSOR_READ();
+    while(ir[4]){
+      MOTOR(100, -100);
+      SENSOR_READ();
+    }
+    while(!ir[4]){
+      MOTOR(100, -100);
+      SENSOR_READ();
+    }
+    MOTOR(-100, 100);
+    delay(2);
+    MOTOR(0, 0);
+    MOTOR(100, 100);
+    delay(100);
+    LINE_TRACK();
+  }
+
+  // Right_T__straight ---------------------------------------------------------------------------------------- case - 06
+  if(node == 'R' && turn == 'S'){
+    SENSOR_READ();
+    while(ir[8]){
+      MOTOR(100, 100);
+      SENSOR_READ();
+    }
+    MOTOR(100, 100);
+    delay(100);
+    LINE_TRACK();
+  }
+  // T__left -------------------------------------------------------------------------------------------------- case - 07
+  if(node == 'T' && turn == 'L'){
+    SENSOR_READ();
+    while(!ir[4]){
+      MOTOR(-100, 100);
+      SENSOR_READ();
+    }
+    MOTOR(100, -100);
+    delay(2);
+    MOTOR(0, 0);
+    MOTOR(100, 100);
+    delay(100);
+    LINE_TRACK();
+  }
+
+  // T__right ------------------------------------------------------------------------------------------------- case - 08
+  if(node == 'T' && turn == 'R'){
+    SENSOR_READ();
+    while(!ir[4]){
+      MOTOR(100, -100);
+      SENSOR_READ();
+    }
+    MOTOR(100, 100);
+    delay(100);
+    LINE_TRACK();
+  }
+
+  if(node == 'U'){
+    SENSOR_READ();
+    while(!ir[4]){
+      MOTOR(-100, 100);
+      SENSOR_READ();
+    }
+    MOTOR(100, 100);
+    delay(100);
+    LINE_TRACK();
+  }
+}
+
+
+void MOTOR(int left_speed, int right_speed){
+  if(left_speed >= 0){
+    digitalWrite(L1, HIGH);
+    digitalWrite(L2, LOW);
+    analogWrite(L3, left_speed);
+  }
+  else{
+    digitalWrite(L1, LOW);
+    digitalWrite(L2, HIGH);
+    analogWrite(L3,abs(left_speed));
+  }
+  if(right_speed >= 0){
+    digitalWrite(R1, HIGH);
+    digitalWrite(R2, LOW);
+    analogWrite(R3, right_speed);
+  }
+  else{
+    digitalWrite(R1, LOW);
+    digitalWrite(R2, HIGH);
+    analogWrite(R3, abs(right_speed));
+  }
+}
+
+
+void CALCULATE_THE_SHORTEST_PATH()
+{
+  int i, j, k;
+  //char memory[] = "SLULLULSULSLLUSSLLLUL";
+  for(i=0; memory[i]; i++){
+    if(memory[i+1] == 'U'){
+      if(memory[i] == 'S' && memory[i+2] == 'S'){
+        memory[i] = 'U';
+                  }
+      else if(memory[i] == 'S' && memory[i+2] == 'R'){
+        memory[i] = 'L';
+      }
+      else if(memory[i] == 'S' && memory[i+2] == 'L'){
+        memory[i] = 'R';
+      }
+      else if(memory[i] == 'R' && memory[i+2] == 'R'){
+        memory[i] = 'S';
+      }
+      else if(memory[i] == 'R' && memory[i+2] == 'S'){
+        memory[i] = 'L';
+      }
+      else if(memory[i] == 'R' && memory[i+2] == 'L'){
+        memory[i] = 'U';
+      }
+      else if(memory[i] == 'L' && memory[i+2] == 'L'){
+        memory[i] = 'S';
+      }
+      else if(memory[i] == 'L' && memory[i+2] == 'S'){
+        memory[i] = 'R';
+      }
+      else if(memory[i] == 'L' && memory[i+2] == 'R'){
+        memory[i] = 'U';
+      }
+      for(j=i+1, k=i+3; memory[k]; j++, k++){
+        memory[j] = memory[k];
+      }
+      memory[j] = '\0';
+      //printf("\n\n%s", memory);
+      //break;
+    }
+  }
 }
