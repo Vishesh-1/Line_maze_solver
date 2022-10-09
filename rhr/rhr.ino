@@ -10,6 +10,8 @@ int mata2;
 int mata3; 
 int mata4;
 
+
+
 int R1 = 4; //forward or reverse, pin 4
 int R2 = 5;
 int onR = 10; //magnitude of the power for the motor
@@ -35,7 +37,7 @@ void strongright()
   analogWrite(onL, 127);
   digitalWrite(L1, LOW);
   digitalWrite(L2, HIGH);
-  analogWrite(onR, 52);
+  analogWrite(onR, 53);//44
   digitalWrite(R1, HIGH);//to keep the robot on the line
   digitalWrite(R2, LOW);
 }
@@ -45,7 +47,7 @@ void midright2()
   analogWrite(onL, 127);
   digitalWrite(L1, LOW);
   digitalWrite(L2, HIGH);
-  analogWrite(onR, 52);
+  analogWrite(onR, 53);
   digitalWrite(R1, LOW);//to keep the robot on the line
   digitalWrite(R2, HIGH);
   
@@ -56,7 +58,7 @@ void midright()
   analogWrite(onL, 127);
   digitalWrite(L1, LOW);
   digitalWrite(L2, HIGH);
-  analogWrite(onR, 62);
+  analogWrite(onR, 63); // 48
   digitalWrite(R1, LOW);
   digitalWrite(R2, HIGH);
 }
@@ -66,17 +68,17 @@ void softright()
   analogWrite(onL, 127);
   digitalWrite(L1, LOW);
   digitalWrite(L2, HIGH);
-  analogWrite(onR, 112);
+  analogWrite(onR, 112);// 88
   digitalWrite(R1, LOW);
   digitalWrite(R2, HIGH);
 }
 
 void moveforward()
 {
-  analogWrite(onL, 127);
+  analogWrite(onL, 110);
   digitalWrite(L1, LOW);
   digitalWrite(L2, HIGH);
-  analogWrite(onR, 127);
+  analogWrite(onR, 110);
   digitalWrite(R1, LOW);
   digitalWrite(R2, HIGH);
 }
@@ -93,7 +95,7 @@ void softleft()
 
 void midleft()
 {
-  analogWrite(onL, 62);
+  analogWrite(onL, 63);
   digitalWrite(L1, LOW);
   digitalWrite(L2, HIGH);
   analogWrite(onR, 127);
@@ -103,7 +105,7 @@ void midleft()
 
 void midleft2()
 {
- analogWrite(onL, 52);
+ analogWrite(onL, 53);
   digitalWrite(L1, LOW);
   digitalWrite(L2, HIGH);
   analogWrite(onR, 127);
@@ -113,7 +115,7 @@ void midleft2()
 
 void strongleft()
 {
-  analogWrite(onL, 52);
+  analogWrite(onL, 53);
   digitalWrite(L1, HIGH);
   digitalWrite(L2, LOW);
   analogWrite(onR, 127);
@@ -123,20 +125,20 @@ void strongleft()
 
 void turnright()
 {
-  analogWrite(onL, 127);
+  analogWrite(onL, 110);
   digitalWrite(L1, LOW);
   digitalWrite(L2, HIGH);
-  analogWrite(onR, 127);
+  analogWrite(onR, 110);
   digitalWrite(R1, HIGH);
   digitalWrite(R2, LOW);
 }
 
 void turnleft()
 {
-  analogWrite(onL, 127);
+  analogWrite(onL, 110);
   digitalWrite(L1, HIGH);
   digitalWrite(L2, LOW);
-  analogWrite(onR, 127);
+  analogWrite(onR, 110);
   digitalWrite(R1, LOW);
   digitalWrite(R2, HIGH);
 }
@@ -144,7 +146,7 @@ void turnleft()
 void righttillstraight()
 {
   turnright();
-  delay(500); //to be free from the line if there is a straight intersection (exit 2)
+  delay(200); //to be free from the line if there is a straight intersection (exit 2)
   readsensor();
   while (s[2]==0)
   {
@@ -156,7 +158,7 @@ void righttillstraight()
 void lefttillstraight()
 {
   turnleft();
-  delay(500); //to be free from the line if there is a straight intersection (exit 2)
+  delay(200); //to be free from the line if there is a straight intersection (exit 2)
   readsensor();
   while (s[2]==0)
   {
@@ -167,7 +169,7 @@ void lefttillstraight()
 
 void turnaround()
 {
-  lefttillstraight();
+  righttillstraight();
 }
 
 void stop()
@@ -183,7 +185,7 @@ void stop()
 void lilmoveforward()
 {
   moveforward();
-  delay(150); // adjust based on your batteries power, new one would be stronger than the drained-out one, of course
+  delay(100); // adjust based on your batteries power, new one would be stronger than the drained-out one, of course
   readsensor();
 }
 
@@ -242,7 +244,9 @@ Serial.println(" ");
 void condition()
 {
  if (data==0b0000100)
-   {moveforward();}
+   {
+   moveforward();
+   }
  else if (data==0b0000001)
    {
     strongright();
@@ -277,22 +281,23 @@ void condition()
    }
  else //there is a right angle turn or intersection
    {
-      if (data==0b0000000) //dead end
+     
+      if (data==0b0011111) //T, +, end of maze
+        {
+          lilmoveforward();
+          if (data==0b0000000)// T intersection
+            {
+              
+              lefttillstraight();
+              path[pathlength]='L';pathlength++;//save L
+              
+            }
+            else if (data==0b0000000) //dead end
         {
           turnaround();
           path[pathlength]='U';pathlength++;//save U
           
         }
-      else if (data==0b0011111) //T, +, end of maze
-        {
-          lilmoveforward();
-          if (data==0b0000000)// T intersection
-            {
-              lilmoveforward(); //turning stabilizer
-              righttillstraight();
-              path[pathlength]='R';pathlength++;//save R
-              
-            }
           else if (data==0b0011111)//end of maze
             {
               stop(); //stopping the robot
@@ -309,49 +314,49 @@ void condition()
              
               shortestpath(); //move through the shortest path
             }
+        
           else //ada garis ke arah lurus 00100 dll (+ intersection)
             {
-              lilmoveforward(); //turning stabilizer
-              righttillstraight();
-              path[pathlength]='R';pathlength++;//save R
+              lefttillstraight();
+              //turnleft();
+              path[pathlength]='L';pathlength++;//save L
               
             }
         }
+   
   //straight or right junction
       else if ((data==0b0000111)||(data==0b0001111))
         {
           lilmoveforward();lilmoveforward();
           if (data==0b0000000)//right only
             {
-              lilmoveforward();
               righttillstraight();
             }
-    else if (s[0]==0)
+    else if (s[2]==1)
                   {
-              lilmoveforward();
-              righttillstraight();
-              path[pathlength]='R';pathlength++;//save R
+              
+              moveforward();
+              path[pathlength]='S';pathlength++;//save S
               
             }
         }
 //left or straight junction
       else if ((data==0b0011100)||(data==0b0011110))
         {
-          lilmoveforward();lilmoveforward();
-          if (data==0b0000000) //left only
-            {
-              lilmoveforward();
+        
+          
+              
               lefttillstraight();
-            }
-        else if (s[4]==0) //there is a straight path
-            {
-              moveforward();
-              path[pathlength]='S';pathlength++;//save S
+            
+        
+            
+              
+              path[pathlength]='L';pathlength++;//save L
               
             }
          }
     }
-}
+
 
 void shortpath() //calculate the shortest path
 {
@@ -441,7 +446,6 @@ void shortestpath()
         lilmoveforward();
         if (data==0b0000000)//right only
           {
-            lilmoveforward();
             righttillstraight();
           }
         else //there is a straight path
@@ -452,16 +456,9 @@ void shortestpath()
     //left or straight
     else if ((data==0b0011100)||(data==0b0011110))
       {
-        lilmoveforward();
-        if (data==0b0000000) //left only
-          {
-            lilmoveforward();
-            lefttillstraight();
-          }
-        else //there is a straight path
-          {
+        
             choosepath();
-          }
+          
       }
     //T, +, or END OF MAZE
     else if  (data==0b0011111)
