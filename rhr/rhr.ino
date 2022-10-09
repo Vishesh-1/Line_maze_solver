@@ -281,8 +281,14 @@ void condition()
    }
  else //there is a right angle turn or intersection
    {
+     if (data==0b0000000) //dead end
+        {
+          turnaround();
+          path[pathlength]='U';pathlength++;//save U
+          
+        }
      
-      if (data==0b0011111) //T, +, end of maze
+     else if (data==0b0011111) //T, +, end of maze
         {
           lilmoveforward();
           if (data==0b0000000)// T intersection
@@ -292,12 +298,7 @@ void condition()
               path[pathlength]='L';pathlength++;//save L
               
             }
-            else if (data==0b0000000) //dead end
-        {
-          turnaround();
-          path[pathlength]='U';pathlength++;//save U
-          
-        }
+            
           else if (data==0b0011111)//end of maze
             {
               stop(); //stopping the robot
