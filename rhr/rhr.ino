@@ -1,4 +1,4 @@
-#include <MCP3008.h>
+
 
 
 // define pin connections
@@ -8,7 +8,7 @@
 #define MISO_PIN 10
 
 // put pins inside MCP3008 constructor
-MCP3008 adc(CLOCK_PIN, MOSI_PIN, MISO_PIN, CS_PIN);
+//MCP3008 adc(CLOCK_PIN, MOSI_PIN, MISO_PIN, CS_PIN);
 
 int mata0; // mata means “eye”
 int mata1; 
@@ -183,6 +183,7 @@ Serial.println("ok");
       Serial.print(adc.readADC(i));
       Serial.print(" ");
   }*/
+}
   
 void SENSOR_PRINT()
 {
@@ -195,7 +196,7 @@ void SENSOR_PRINT()
 }
 
 void LINE_TRACK(){
-  sum = ir[1] + ir[2] + ir[3] ];
+  sum = ir[1] + ir[2] + ir[3] ;
   if(sum > 1){
     return;
   }
